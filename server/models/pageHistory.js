@@ -62,6 +62,14 @@ module.exports = class PageHistory extends Model {
           to: 'users.id'
         }
       },
+      visitors: {
+        relation: Model.HasManyRelation,
+        modelClass: require('./visitors'),
+        join: {
+          from: 'pageHistory.id',
+          to: 'visitors.historyId'
+        }
+      },
       editor: {
         relation: Model.BelongsToOneRelation,
         modelClass: require('./editors'),
@@ -89,7 +97,7 @@ module.exports = class PageHistory extends Model {
    * Create Page Version
    */
   static async addVersion(opts) {
-    await WIKI.models.pageHistory.query().insert({
+    const history = await WIKI.models.pageHistory.query().insert({
       pageId: opts.id,
       authorId: opts.authorId,
       content: opts.content,
@@ -107,6 +115,10 @@ module.exports = class PageHistory extends Model {
       action: opts.action || 'updated',
       versionDate: opts.versionDate
     })
+
+    await WIKI.models.pageHistory.relatedQuery('visitors').for(0)
+      .patch({ historyId: history.id })
+      .where({ pageId: opts.id })
   }
 
   /**

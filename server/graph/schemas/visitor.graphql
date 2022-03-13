@@ -1,0 +1,156 @@
+# ===============================================
+# VISITORS
+# ===============================================
+
+extend type Query {
+  visitors: VisitorQuery
+}
+
+extend type Mutation {
+  visitors: VisitorMutation
+}
+
+# -----------------------------------------------
+# QUERIES
+# -----------------------------------------------
+
+type VisitorQuery {
+  history(
+    id: Int!
+    offsetPage: Int
+    offsetSize: Int
+  ): VisitorHistoryResult @auth(requires: ["manage:system", "read:history"])
+
+  version(
+    pageId: Int!
+    versionId: Int!
+  ): VisitorVersion @auth(requires: ["manage:system", "read:history"])
+
+  search(
+    query: String!
+  ): VisitorSearchResponse! @auth(requires: ["manage:system", "read:pages"])
+
+  list(
+    limit: Int
+    orderBy: PageOrderBy
+    orderByDirection: PageOrderByDirection
+    visitorId: Int
+  ): [VisitorListItem!]! @auth(requires: ["manage:system", "read:pages"])
+
+  single(
+    id: Int!
+  ): Visitor @auth(requires: ["read:pages", "manage:system"])
+}
+
+# -----------------------------------------------
+# MUTATIONS
+# -----------------------------------------------
+
+type VisitorMutation {
+  create(
+    pageId: Int!
+    visitorId: Int!
+    visitedAt: String!
+  ): VisitorResponse @auth(requires: ["write:pages", "manage:pages", "manage:system"])
+
+  DefaultResponse @auth(requires: ["manage:pages", "manage:system"])
+
+  delete(
+    id: Int!
+  ): DefaultResponse @auth(requires: ["delete:pages", "manage:system"])
+}
+
+# -----------------------------------------------
+# TYPES
+# -----------------------------------------------
+
+type VisitorResponse {
+  responseResult: ResponseStatus!
+  visitor: Visitor
+}
+
+type Visitor {
+  id: Int!
+  pageId: Int!
+  visitorId: Int!
+  visitedAt: Date!
+}
+
+type VisitorHistory {
+  versionId: Int!
+  versionDate: Date!
+  authorId: Int!
+  authorName: String!
+  actionType: String!
+  valueBefore: String
+  valueAfter: String
+}
+
+type VisitorVersion {
+  action: String!
+  authorId: String!
+  authorName: String!
+  content: String!
+  contentType: String!
+  createdAt: Date!
+  versionDate: Date!
+  description: String!
+  editor: String!
+  isPrivate: Boolean!
+  isPublished: Boolean!
+  locale: String!
+  pageId: Int!
+  path: String!
+  publishEndDate: Date!
+  publishStartDate: Date!
+  tags: [String]!
+  title: String!
+  versionId: Int!
+}
+
+type VisitorHistoryResult {
+  trail: [VisitorHistory]
+  total: Int!
+}
+
+type VisitorSearchResponse {
+  results: [VisitorSearchResult]!
+  suggestions: [String]!
+  totalHits: Int!
+}
+
+type PageSearchResult {
+  id: String!
+  title: String!
+  description: String!
+  path: String!
+  locale: String!
+}
+
+type PageListItem {
+  id: Int!
+  path: String!
+  locale: String!
+  title: String
+  description: String
+  contentType: String!
+  isPublished: Boolean!
+  isPrivate: Boolean!
+  privateNS: String
+  createdAt: Date!
+  updatedAt: Date!
+  tags: [String]
+}
+
+enum PageOrderBy {
+  CREATED
+  ID
+  PATH
+  TITLE
+  UPDATED
+}
+
+enum PageOrderByDirection {
+  ASC
+  DESC
+}

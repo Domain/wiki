@@ -6,6 +6,8 @@
         .subheading Viewing history of #[strong /{{path}}]
         template(v-if='$vuetify.breakpoint.mdAndUp')
           v-spacer
+          .caption.blue--text.text--lighten-3.mr-4 Total Visits: {{total}}
+          .caption.blue--text.text--lighten-3.mr-4 Total Visitors: {{total}}
           .caption.blue--text.text--lighten-3.mr-4 Trail Length: {{total}}
           .caption.blue--text.text--lighten-3 ID: {{pageId}}
           v-btn.ml-4(depressed, color='blue darken-1', @click='goLive') Return to Live Version
@@ -25,10 +27,11 @@
               v-timeline-item.pb-2(
                 v-for='(ph, idx) in fullTrail'
                 :key='ph.versionId'
-                :small='ph.actionType === `edit`'
+                :small='visitSource !== ph.versionId'
                 :color='trailColor(ph.actionType)'
-                :icon='trailIcon(ph.actionType)'
                 )
+                template(v-slot:icon)
+                  v-icon(:small='visitSource !== ph.versionId', @click='toggleVisitors(ph.versionId)') {{trailIcon(ph.actionType, ph.versionId)}}
                 v-card.radius-7(flat, :class='trailBgColor(ph.actionType)')
                   v-toolbar(flat, :color='trailBgColor(ph.actionType)', height='40')
                     .caption(:title='$options.filters.moment(ph.versionDate, `LLL`)') {{ ph.versionDate | moment('ll') }}
@@ -61,6 +64,7 @@
                         v-list-item(@click='branchOff(ph.versionId)')
                           v-list-item-avatar(size='24'): v-icon mdi-source-branch
                           v-list-item-title Branch off from here
+
                     v-btn.mr-2.radius-4(
                       @click='setDiffSource(ph.versionId)'
                       icon
@@ -102,14 +106,42 @@
                 v-card.grey.radius-7(flat, :class='$vuetify.theme.dark ? `darken-2` : `lighten-4`')
                   v-row(no-gutters, align='center')
                     v-col
-                      v-card-text
+                      v-card-text(v-if='visitSource < 0')
                         .subheading {{target.title}}
                         .caption {{target.description}}
+                      v-card-text(v-else)
+                        .subheading Visits: 100
+                        .caption Visitors: 10
                     v-col.text-right.py-3(cols='2', v-if='$vuetify.breakpoint.mdAndUp')
                       v-btn.mr-3(:color='$vuetify.theme.dark ? `white` : `grey darken-3`', small, dark, outlined, @click='toggleViewMode')
                         v-icon(left) mdi-eye
                         .overline View Mode
-                v-card.mt-3(light, v-html='diffHTML', flat)
+                v-card.mt-3(light, v-html='diffHTML', flat, v-if='visitSource < 0')
+                v-card.mt-3(light, flat, v-else)
+                  v-divider.mt-3
+                  v-timeline(
+                    dense
+                    )
+                    v-timeline-item.comments-post(
+                      color='pink darken-4'
+                      v-for='(ph, idx) in fullTrail'
+                      :key='ph.versionId'
+                      )
+                      template(v-slot:icon)
+                        v-avatar(color='blue-grey')
+                          //- v-img(src='http://i.pravatar.cc/64')
+                          span.white--text.title {{ph.authorName[0]}}
+                      v-card.elevation-1(:class='$vuetify.theme.dark ? "grey darken-3" : "grey lighten-4"')
+                        v-card-text
+                          .comments-post-name.caption: strong {{ph.authorName}}
+                          .comments-post-date.overline.grey--text {{ph.versionDate | moment('calendar') }}
+                    v-btn.ma-0.radius-7(
+                      v-if='total > trail.length'
+                      block
+                      color='primary'
+                      @click='loadMore'
+                      )
+                      .caption.white--text Load More...
 
     v-dialog(v-model='isRestoreConfirmDialogShown', max-width='650', persistent)
       v-card
@@ -208,6 +240,7 @@ export default {
       trail: [],
       diffSource: 0,
       diffTarget: 0,
+      visitSource: -1,
       offsetPage: 0,
       total: 0,
       viewMode: 'line-by-line',
@@ -439,6 +472,13 @@ export default {
         modal: true
       }
     },
+    toggleVisitors (versionId) {
+      console.log("View visitor: " + versionId)
+      if (this.visitSource == versionId)
+        this.visitSource = -1
+      else
+        this.visitSource = versionId
+    },
     branchOffHandle ({ locale, path }) {
       window.location.assign(`/e/${locale}/${path}?from=${this.pageId},${this.branchOffOpts.versionId}`)
     },
@@ -490,10 +530,13 @@ export default {
           return 'grey'
       }
     },
-    trailIcon (actionType) {
+    trailIcon (actionType, versionId) {
+      if (versionId == this.visitSource)
+        return 'mdi-account'
+
       switch (actionType) {
         case 'edit':
-          return '' // 'mdi-pencil'
+          return 'mdi-pencil'
         case 'move':
           return 'mdi-forward'
         case 'initial':

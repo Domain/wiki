@@ -4,8 +4,10 @@
 FROM node:14
 LABEL maintainer "requarks.io"
 
-RUN apt-get update && \
-    apt-get install -y bash curl git python make g++ nano openssh-server gnupg && \
+RUN sed -i 's/deb.debian.org/mirrors.163.com/g' /etc/apt/sources.list && \
+    sed -i 's/security.debian.org/mirrors.163.com/g' /etc/apt/sources.list && \
+    apt-get update && \
+    apt-get install -y bash curl git python make cmake g++ nano openssh-server gnupg && \
     mkdir -p /wiki
 
 WORKDIR /wiki

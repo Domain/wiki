@@ -111,7 +111,15 @@ module.exports = class Page extends Model {
           from: 'pages.localeCode',
           to: 'locales.code'
         }
-      }
+      },
+      visitors: {
+        relation: Model.HasManyRelation,
+        modelClass: require('./visitors'),
+        join: {
+          from: 'pages.id',
+          to: 'visitors.pageId'
+        }
+      },
     }
   }
 
@@ -953,8 +961,10 @@ module.exports = class Page extends Model {
    */
   static async getPage(opts) {
     // -> Get from cache first
+    console.log("Get from cache first " + opts.userId)
     let page = await WIKI.models.pages.getPageFromCache(opts)
     if (!page) {
+      console.log("Get from db first " + opts.userId)
       // -> Get from DB
       page = await WIKI.models.pages.getPageFromDb(opts)
       if (page) {
@@ -967,6 +977,32 @@ module.exports = class Page extends Model {
           throw new Error('Error while fetching page. Duplicate entry detected. Reload the page to try again.')
         }
       }
+    }
+
+    console.log("Finding visitors for user " + opts.userId)
+    const visitor = await WIKI.models.pages.relatedQuery('visitors')
+      .for(page)
+      .where({historyId: 0})
+      .orderBy('visitedAt', 'desc')
+      .limit(1)
+      .first()
+    console.log("Finish finding visitors for user " + opts.userId)
+    let diff = 1
+    if (visitor !== undefined) {
+      console.log("Found visitor at: " + visitor.visitedAt)
+      const now = new Date()
+      const visitedAt = Date.parse(visitor.visitedAt)
+      diff = (now - visitedAt) / (1000 * 60 * 60)
+    }
+    if (diff - 1 >= 0) {
+      console.log("Diff: " + diff + "Insert visitor at: " + new Date().toISOString())
+      await WIKI.models.pages.relatedQuery('visitors')
+        .for(page)
+        .insert({
+          historyId: 0,
+          visitorId: opts.userId,
+          visitedAt: new Date().toISOString()
+        })
     }
     return page
   }
