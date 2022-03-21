@@ -824,6 +824,8 @@ module.exports = class Page extends Model {
     await WIKI.models.pages.deletePageFromCache(page.hash)
     WIKI.events.outbound.emit('deletePageFromCache', page.hash)
 
+    await WIKI.models.visitors.query().delete().where('pageId', page.id)
+
     // -> Rebuild page tree
     await WIKI.models.pages.rebuildTree()
 

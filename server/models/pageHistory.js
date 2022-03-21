@@ -116,9 +116,12 @@ module.exports = class PageHistory extends Model {
       versionDate: opts.versionDate
     })
 
-    await WIKI.models.pageHistory.relatedQuery('visitors').for(0)
-      .patch({ historyId: history.id })
-      .where({ pageId: opts.id })
+    await history.$relatedQuery('historyVisitors')
+      .insert({
+        pageId: opts.id,
+        visitorId: opts.userId,
+        pageId: opts.id
+      })
   }
 
   /**
