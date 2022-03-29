@@ -72,6 +72,12 @@ type PageQuery {
   conflictLatest(
     id: Int!
   ): PageConflictLatest! @auth(requires: ["write:pages", "manage:pages", "manage:system"])
+
+  allVisitors(
+    historyId: Int!
+    pageId: Int!
+    visitorId: Int!
+  ): [Visitor!]! @auth(requires: ["manage:system", "read:history"])
 }
 
 # -----------------------------------------------
@@ -158,6 +164,11 @@ type PageMutation {
   purgeHistory (
     olderThan: String!
   ): DefaultResponse @auth(requires: ["manage:system"])
+
+  updatePageTime (
+    pageId: Int!
+    duration: Int!
+  ): DefaultResponse
 }
 
 # -----------------------------------------------
@@ -202,6 +213,17 @@ type Page {
   creatorId: Int! @auth(requires: ["write:pages", "manage:system"])
   creatorName: String! @auth(requires: ["write:pages", "manage:system"])
   creatorEmail: String! @auth(requires: ["write:pages", "manage:system"])
+}
+
+type Visitor {
+  pageId: Int!
+  pageTitle: String!
+  pageDescription: String!
+  visitorId: Int!
+  visitorName: String!
+  firstVisitedAt: String!
+  lastVisitedAt: String!
+  totalTime: Int!
 }
 
 type PageTag {

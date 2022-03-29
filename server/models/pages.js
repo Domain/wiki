@@ -111,6 +111,14 @@ module.exports = class Page extends Model {
           from: 'pages.localeCode',
           to: 'locales.code'
         }
+      },
+      visitors: {
+        relation: Model.HasManyRelation,
+        modelClass: require('./visitors'),
+        join: {
+          from: 'pages.id',
+          to: 'visitors.pageId'
+        }
       }
     }
   }
@@ -353,6 +361,8 @@ module.exports = class Page extends Model {
     // -> Get latest updatedAt
     page.updatedAt = await WIKI.models.pages.query().findById(page.id).select('updatedAt').then(r => r.updatedAt)
 
+    await WIKI.models.visitors.newVisitor(page, page.authorId)
+
     return page
   }
 
@@ -383,12 +393,15 @@ module.exports = class Page extends Model {
     }
 
     // -> Create version snapshot
-    await WIKI.models.pageHistory.addVersion({
+    const history = await WIKI.models.pageHistory.addVersion({
       ...ogPage,
+      userId: opts.user.id,
       isPublished: ogPage.isPublished === true || ogPage.isPublished === 1,
       action: opts.action ? opts.action : 'updated',
       versionDate: ogPage.updatedAt
     })
+
+    await WIKI.models.visitors.update(history, ogPage, opts.user.id)
 
     // -> Format Extra Properties
     if (!_.isPlainObject(ogPage.extra)) {
@@ -625,12 +638,14 @@ module.exports = class Page extends Model {
 
     // -> Create version snapshot
     if (shouldConvert) {
-      await WIKI.models.pageHistory.addVersion({
+      const history = await WIKI.models.pageHistory.addVersion({
         ...ogPage,
         isPublished: ogPage.isPublished === true || ogPage.isPublished === 1,
         action: 'updated',
         versionDate: ogPage.updatedAt
       })
+
+      await WIKI.models.visitors.update(history, ogPage, opts.user.id)
     }
 
     // -> Update page
@@ -711,11 +726,13 @@ module.exports = class Page extends Model {
     }
 
     // -> Create version snapshot
-    await WIKI.models.pageHistory.addVersion({
+    const history = await WIKI.models.pageHistory.addVersion({
       ...page,
       action: 'moved',
       versionDate: page.updatedAt
     })
+
+    await WIKI.models.visitors.update(history, page, opts.user.id)
 
     const destinationHash = pageHelper.generateHash({ path: opts.destinationPath, locale: opts.destinationLocale, privateNS: opts.isPrivate ? 'TODO' : '' })
 
@@ -805,11 +822,13 @@ module.exports = class Page extends Model {
     }
 
     // -> Create version snapshot
-    await WIKI.models.pageHistory.addVersion({
+    const history = await WIKI.models.pageHistory.addVersion({
       ...page,
       action: 'deleted',
       versionDate: page.updatedAt
     })
+
+    await WIKI.models.visitors.update(history, page, opts.user.id)
 
     // -> Delete page
     await WIKI.models.pages.query().delete().where('id', page.id)
@@ -966,6 +985,17 @@ module.exports = class Page extends Model {
           /* TODO: Detect duplicate and delete */
           throw new Error('Error while fetching page. Duplicate entry detected. Reload the page to try again.')
         }
+      }
+    }
+
+    if (page !== undefined) {
+      const visitor = await WIKI.models.pages.relatedQuery('visitors')
+        .for(page)
+        .where('visitorId', opts.userId)
+        .first()
+      let diff = 1
+      if (visitor === undefined) {
+        await WIKI.models.visitors.newVisitor(page, opts.userId)
       }
     }
     return page

@@ -8,6 +8,8 @@
           v-spacer
           .caption.blue--text.text--lighten-3.mr-4 Trail Length: {{total}}
           .caption.blue--text.text--lighten-3 ID: {{pageId}}
+          v-btn.ml-4(depressed, color='blue darken-1', @click='toggleVisitors', v-if='!showVisitors') 查看浏览历史
+          v-btn.ml-4(depressed, color='blue darken-1', @click='toggleVisitors', v-else) 查看修改历史
           v-btn.ml-4(depressed, color='blue darken-1', @click='goLive') Return to Live Version
       v-container(fluid, grid-list-xl)
         v-layout(row, wrap)
@@ -25,10 +27,15 @@
               v-timeline-item.pb-2(
                 v-for='(ph, idx) in fullTrail'
                 :key='ph.versionId'
-                :small='ph.actionType === `edit`'
+                :small='visitSource !== ph.versionId'
                 :color='trailColor(ph.actionType)'
-                :icon='trailIcon(ph.actionType)'
                 )
+                template(v-slot:icon)
+                  v-tooltip(right)
+                    template(v-slot:activator='{ on, attrs }')
+                      v-icon(:small='visitSource !== ph.versionId', v-bind='attrs', v-on='on', @click='toggleVisitors(ph)') {{trailIcon(ph.actionType, ph.versionId)}}
+                    span(v-if='visitSource !== ph.versionId') 查看浏览记录
+                    span(v-else) 查看修改记录
                 v-card.radius-7(flat, :class='trailBgColor(ph.actionType)')
                   v-toolbar(flat, :color='trailBgColor(ph.actionType)', height='40')
                     .caption(:title='$options.filters.moment(ph.versionDate, `LLL`)') {{ ph.versionDate | moment('ll') }}
@@ -43,10 +50,10 @@
                       template(v-slot:activator='{ on }')
                         v-btn.mr-2.radius-4(icon, v-on='on', small, tile): v-icon mdi-dots-horizontal
                       v-list(dense, nav).history-promptmenu
-                        v-list-item(@click='setDiffSource(ph.versionId)', :disabled='(ph.versionId >= diffTarget && diffTarget !== 0) || ph.versionId === 0')
+                        v-list-item(@click='setDiffSource(ph.versionId)', :disabled='(ph.versionId >= diffTarget && diffTarget !== 0) || ph.versionId === 0  || visitSource >= 0')
                           v-list-item-avatar(size='24'): v-avatar A
                           v-list-item-title Set as Differencing Source
-                        v-list-item(@click='setDiffTarget(ph.versionId)', :disabled='ph.versionId <= diffSource && ph.versionId !== 0')
+                        v-list-item(@click='setDiffTarget(ph.versionId)', :disabled='(ph.versionId <= diffSource && ph.versionId !== 0) || visitSource >= 0')
                           v-list-item-avatar(size='24'): v-avatar B
                           v-list-item-title Set as Differencing Target
                         v-list-item(@click='viewSource(ph.versionId)')
@@ -61,6 +68,7 @@
                         v-list-item(@click='branchOff(ph.versionId)')
                           v-list-item-avatar(size='24'): v-icon mdi-source-branch
                           v-list-item-title Branch off from here
+
                     v-btn.mr-2.radius-4(
                       @click='setDiffSource(ph.versionId)'
                       icon
@@ -68,7 +76,7 @@
                       depressed
                       tile
                       :class='diffSource === ph.versionId ? `pink white--text` : ($vuetify.theme.dark ? `grey darken-2` : `grey lighten-2`)'
-                      :disabled='(ph.versionId >= diffTarget && diffTarget !== 0) || ph.versionId === 0'
+                      :disabled='(ph.versionId >= diffTarget && diffTarget !== 0) || ph.versionId === 0 || showVisitors'
                       ): strong A
                     v-btn.mr-0.radius-4(
                       @click='setDiffTarget(ph.versionId)'
@@ -77,7 +85,7 @@
                       depressed
                       tile
                       :class='diffTarget === ph.versionId ? `pink white--text` : ($vuetify.theme.dark ? `grey darken-2` : `grey lighten-2`)'
-                      :disabled='ph.versionId <= diffSource && ph.versionId !== 0'
+                      :disabled='(ph.versionId <= diffSource && ph.versionId !== 0) || showVisitors'
                       ): strong B
 
             v-btn.ma-0.radius-7(
@@ -97,7 +105,7 @@
               ) End of history trail
 
           v-flex(xs12, md8)
-            v-card.radius-7(:class='$vuetify.breakpoint.mdAndUp ? `mt-8` : ``')
+            v-card.radius-7(:class='$vuetify.breakpoint.mdAndUp ? `mt-8` : ``', v-if='!showVisitors')
               v-card-text
                 v-card.grey.radius-7(flat, :class='$vuetify.theme.dark ? `darken-2` : `lighten-4`')
                   v-row(no-gutters, align='center')
@@ -110,6 +118,7 @@
                         v-icon(left) mdi-eye
                         .overline View Mode
                 v-card.mt-3(light, v-html='diffHTML', flat)
+            visitors(v-else, :pageId='pageId', :historyId='visitSource', title='读者', subtitle='浏览过该页面的用户列表')
 
     v-dialog(v-model='isRestoreConfirmDialogShown', max-width='650', persistent)
       v-card
@@ -208,6 +217,8 @@ export default {
       trail: [],
       diffSource: 0,
       diffTarget: 0,
+      showVisitors: false,
+      visitSource: -1,
       offsetPage: 0,
       total: 0,
       viewMode: 'line-by-line',
@@ -439,6 +450,22 @@ export default {
         modal: true
       }
     },
+    toggleVisitors (ph) {
+      if (ph === undefined) {
+        this.showVisitors = !this.showVisitors
+        this.visitSource = -1
+      }
+      else if (this.visitSource == ph.versionId)
+      {
+        this.visitSource = -1
+        this.showVisitors = false
+      }
+      else
+      {
+        this.visitSource = ph.versionId
+        this.showVisitors = true
+      }
+    },
     branchOffHandle ({ locale, path }) {
       window.location.assign(`/e/${locale}/${path}?from=${this.pageId},${this.branchOffOpts.versionId}`)
     },
@@ -490,10 +517,13 @@ export default {
           return 'grey'
       }
     },
-    trailIcon (actionType) {
+    trailIcon (actionType, versionId) {
+      if (versionId == this.visitSource)
+        return 'mdi-account'
+
       switch (actionType) {
         case 'edit':
-          return '' // 'mdi-pencil'
+          return 'mdi-pencil'
         case 'move':
           return 'mdi-forward'
         case 'initial':
@@ -548,6 +578,7 @@ export default {
       result ({ data, loading, networkStatus }) {
         this.total = data.pages.history.total
         this.trail = data.pages.history.trail
+        console.log("total: " + this.total + ", trail: " + this.trail.length)
       },
       watchLoading (isLoading) {
         this.$store.commit(`loading${isLoading ? 'Start' : 'Stop'}`, 'history-trail-refresh')

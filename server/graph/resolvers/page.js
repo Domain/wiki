@@ -361,6 +361,144 @@ module.exports = {
       } else {
         throw new WIKI.Error.PageNotFound()
       }
+    },
+    /**
+     * FETCH ALL VISITORS FOR ALL THE TIME
+     */
+    async allVisitors (obj, args, context, info) {
+      if (args.historyId >= 0) {
+        return await WIKI.models.visitors.query()
+          .select([
+            'visitors.pageId',
+            'visitors.visitorId',
+            'visitors.firstVisitedAt',
+            'visitors.lastVisitedAt',
+            'visitors.totalTime',
+            {
+              visitorName: 'visitor.name',
+              pageTitle: 'page.title',
+              pageDescription: 'page.description'
+            }
+          ])
+          .joinRelated('[visitor, page]')
+          .where('historyId', args.historyId)
+      }
+
+      if (args.pageId != 0) {
+        let visitors = await WIKI.models.visitors.query()
+          .select([
+            'visitorId',
+            {
+              visitorName: 'visitor.name',
+              pageTitle: 'page.title',
+              pageDescription: 'page.description'
+            }
+          ])
+          .sum({totalTime: 'totalTime'})
+          .joinRelated('[visitor, page]')
+          .where('pageId', args.pageId)
+          .groupBy('visitorId', 'visitor.name', 'page.title', 'page.description')
+          .orderBy('totalTime', 'desc')
+
+        let result = []
+        for (let visitor of visitors) {
+          const firsts = await WIKI.models.visitors.query()
+            .select([
+              'firstVisitedAt',
+              'historyId'
+            ])
+            .where('pageId', args.pageId)
+            .where('visitorId', visitor.visitorId)
+            .orderBy('historyId')
+            .limit(2)
+
+          let first = firsts[0].firstVisitedAt
+
+          if (firsts.length > 1) {
+            if (firsts[0].historyId == 0)
+              first = firsts[1].firstVisitedAt
+          }
+
+          let last = await WIKI.models.visitors.query()
+            .select('lastVisitedAt')
+            .where('pageId', args.pageId)
+            .where('visitorId', visitor.visitorId)
+            .where('historyId', '0')
+            .limit(1)
+            .first()
+
+          if (last === undefined) {
+            last = await WIKI.models.visitors.query()
+              .select('lastVisitedAt')
+              .where('pageId', args.pageId)
+              .where('visitorId', visitor.visitorId)
+              .orderBy('historyId', 'desc')
+              .limit(1)
+              .first()
+          }
+
+          result.push({
+            ...visitor,
+            ...last,
+            pageId: args.pageId,
+            firstVisitedAt: first,
+          })
+        }
+
+        return result
+      }
+
+      let visitors = await WIKI.models.visitors.query()
+        .select([
+          'pageId',
+          {
+            pageTitle: 'page.title',
+            pageDescription: 'page.description'
+          }
+        ])
+        .sum({totalTime: 'totalTime'})
+        .joinRelated('page')
+        .where('visitorId', args.visitorId)
+        .groupBy('pageId', 'page.title', 'page.description')
+
+      let result = []
+
+      for (let visitor of visitors) {
+        const firsts = await WIKI.models.visitors.query()
+          .select([
+            'firstVisitedAt',
+            'historyId'
+          ])
+          .where('pageId', visitor.pageId)
+          .where('visitorId', args.visitorId)
+          .orderBy('historyId')
+          .limit(2)
+
+        let first = firsts[0].firstVisitedAt
+
+        if (firsts.length > 1) {
+          if (firsts[0].historyId == 0)
+            first = firsts[1].firstVisitedAt
+        }
+
+        const last = await WIKI.models.visitors.query()
+          .select('lastVisitedAt')
+          .where('pageId', visitor.pageId)
+          .where('visitorId', args.visitorId)
+          .where('historyId', '0')
+          .limit(1)
+          .first()
+
+        result.push({
+          ...visitor,
+          ...last,
+          visitorId: args.visitorId,
+          visitorName: '',
+          firstVisitedAt: first,
+        })
+      }
+
+      return result
     }
   },
   PageMutation: {
@@ -588,6 +726,19 @@ module.exports = {
         await WIKI.models.pageHistory.purge(args.olderThan)
         return {
           responseResult: graphHelper.generateSuccess('Page history purged successfully.')
+        }
+      } catch (err) {
+        return graphHelper.generateError(err)
+      }
+    },
+    /**
+     * Update page time
+     */
+    async updatePageTime(obj, args, context) {
+      try {
+        await WIKI.models.visitors.updateTime(context.req.user.id, args.pageId, args.duration)
+        return {
+          responseResult: graphHelper.generateSuccess('Update page time successfully.')
         }
       } catch (err) {
         return graphHelper.generateError(err)

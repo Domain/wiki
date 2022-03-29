@@ -18558,6 +18558,11 @@ timed-out@4.0.1:
   resolved "https://registry.yarnpkg.com/timed-out/-/timed-out-4.0.1.tgz#f32eacac5a175bea25d7fab565ab3ed8741ef56f"
   integrity sha1-8y6srFoXW+ol1/q1Zas+2HQe9W8=
 
+timeme.js@2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/timeme.js/-/timeme.js-2.1.0.tgz#2a74aa883bb69b28eecae46e2e2a8ee08c2ef499"
+  integrity sha512-2IAW0wqXAEVD8Vh+gpSqnsglLjnb06dDT9ypOsfKEqUrRMelsXW5hexfKIKg2woGSbBxp7zqbPYrMWZNdYYgDQ==
+
 timers-browserify@^2.0.4:
   version "2.0.11"
   resolved "https://registry.yarnpkg.com/timers-browserify/-/timers-browserify-2.0.11.tgz#800b1f3eee272e5bc53ee465a04d0e804c31211f"

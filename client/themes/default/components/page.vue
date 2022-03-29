@@ -325,6 +325,8 @@ import { get, sync } from 'vuex-pathify'
 import _ from 'lodash'
 import ClipboardJS from 'clipboard'
 import Vue from 'vue'
+import gql from 'graphql-tag'
+import TimeMe from 'timeme.js'
 
 Vue.component('Tabset', Tabset)
 
@@ -583,6 +585,17 @@ export default {
         }
       })
     })
+
+    console.log("Init timeme!")
+    TimeMe.initialize({
+      currentPageName: this.pageId.toString(), // current page
+      idleTimeoutInSeconds: 30 // seconds
+    });
+
+    window.addEventListener('beforeunload', () => {
+      console.log("Time: " + TimeMe.getTimeOnCurrentPageInSeconds())
+      this.updatePageTime(this.pageId, Math.round(TimeMe.getTimeOnCurrentPageInSeconds()))
+    })
   },
   methods: {
     goHome () {
@@ -639,6 +652,35 @@ export default {
       this.$vuetify.goTo('#discussion', this.scrollOpts)
       if (focusNewComment) {
         document.querySelector('#discussion-new').focus()
+      }
+    },
+    async updatePageTime (pageId, duration) {
+      try {
+        const respRaw = await this.$apollo.mutate({
+          mutation: gql`
+            mutation ($pageId: Int!, $duration: Int!) {
+              pages {
+                updatePageTime (
+                  pageId: $pageId
+                  duration: $duration
+                ) {
+                  responseResult {
+                    errorCode
+                    message
+                    slug
+                    succeeded
+                  }
+                }
+              }
+            }
+          `,
+          variables: {
+            pageId: pageId,
+            duration: duration
+          }
+        })
+      } catch (err) {
+        this.$store.commit('pushGraphError', err)
       }
     }
   }

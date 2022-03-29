@@ -21,6 +21,10 @@
         //-   v-list-item-content
         //-     v-list-item-title {{$t('profile:comments.title')}}
         //-     v-list-item-subtitle.caption.grey--text.text--lighten-1 Coming soon
+        v-list-item(to='/visitors', color='primary')
+          v-list-item-action: v-icon mdi-file-document-outline
+          v-list-item-content
+            v-list-item-title 浏览记录
 
     v-content(:class='$vuetify.theme.dark ? "grey darken-4" : "grey lighten-5"')
       transition(name='profile-router')
@@ -43,7 +47,8 @@ const router = new VueRouter({
     { path: '/', redirect: '/profile' },
     { path: '/profile', component: () => import(/* webpackChunkName: "profile" */ './profile/profile.vue') },
     { path: '/pages', component: () => import(/* webpackChunkName: "profile" */ './profile/pages.vue') },
-    { path: '/comments', component: () => import(/* webpackChunkName: "profile" */ './profile/comments.vue') }
+    { path: '/comments', component: () => import(/* webpackChunkName: "profile" */ './profile/comments.vue') },
+    { path: '/visitors', component: () => import(/* webpackChunkName: "profile" */ './profile/visitors.vue') }
   ]
 })
 
