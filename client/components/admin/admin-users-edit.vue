@@ -230,8 +230,7 @@
             v-spacer
             .caption {{$t('admin:users.groupAssignNotice')}}
 
-      v-flex(xs6)
-        v-card.animated.fadeInUp.wait-p2s
+        v-card.mt-3.animated.fadeInUp.wait-p6s
           v-toolbar(color='primary', dense, dark, flat)
             v-icon.mr-2 mdi-account-badge-outline
             span {{$t('admin:users.extendedMetadata')}}
@@ -325,7 +324,8 @@
                       @keydown.esc='editPop.timezone = false'
                     )
 
-        v-card.mt-3.animated.fadeInUp.wait-p4s
+      v-flex(xs6)
+        v-card.animated.fadeInUp
           v-toolbar(color='teal', dark, dense, flat)
             v-toolbar-title
               .subtitle-1 {{$t('profile:activity.title')}}
@@ -336,6 +336,44 @@
             .body-2: strong {{ user.updatedAt | moment('LLLL') }}
             .caption.grey--text.mt-3 {{$t('profile:activity.lastLoginOn')}}
             .body-2: strong {{ user.lastLoginAt | moment('LLLL') }}
+
+        v-card.mt-3.animated.fadeInUp.wait-p2s
+          v-toolbar(color='teal', dense, dark, flat)
+            v-icon.mr-2 mdi-file-document-outline
+            span {{$t('profile:pages.title')}}
+            v-spacer
+            v-btn(icon, @click='showDocuments = !showDocuments')
+              v-icon(v-if='showDocuments') mdi-menu-up
+              v-icon(v-else) mdi-menu-down
+          v-expand-transition
+            v-list.py-0(two-line, dense, v-show='showDocuments')
+              template(v-for='(p, idx) in pages')
+                v-list-item.is-clickable(:key='`page-` + p.id', @click='goToPage(p.id)')
+                  v-list-item-avatar(size='32')
+                    v-icon mdi-file-document-edit-outline
+                  v-list-item-content
+                    v-list-item-title {{ p.title }}
+                    v-list-item-subtitle {{ p.createdAt | moment('LLLL') }}
+                v-divider(v-if='idx < pages.length - 1')
+
+        v-card.mt-3.animated.fadeInUp.wait-p4s
+          v-toolbar(color='teal', dense, dark, flat)
+            v-icon.mr-2 mdi-text-box-search-outline
+            span 浏览记录
+            v-spacer
+            v-btn(icon, @click='showVisitors = !showVisitors')
+              v-icon(v-if='showVisitors') mdi-menu-up
+              v-icon(v-else) mdi-menu-down
+          v-expand-transition
+            v-list.py-0(two-line, dense, v-show='showVisitors')
+              template(v-for='(p, idx) in visitors')
+                v-list-item.is-clickable(:key='`visit-` + p.pageId', @click='goToPage(p.pageId)')
+                  v-list-item-avatar(size='32')
+                    v-icon mdi-text-box-search-outline
+                  v-list-item-content
+                    v-list-item-title {{ p.pageTitle }}
+                    v-list-item-subtitle {{ [ p.totalTime, 'seconds' ] | duration('humanize') }}
+                v-divider(v-if='idx < visitors.length - 1')
 
         v-card.mt-3.animated.fadeInUp.wait-p6s
           v-toolbar(color='teal', dense, dark, flat)
@@ -388,6 +426,8 @@ export default {
   },
   data () {
     return {
+      showDocuments: true,
+      showVisitors: true,
       deleteUserDialog: false,
       deleteSearchUserDialog: false,
       deleteReplaceUser: {
@@ -1016,6 +1056,9 @@ export default {
         }
       }
       this.$store.commit(`loadingStop`, 'admin-users-toggle2fa')
+    },
+    goToPage(id) {
+      window.location.assign(`/i/` + id)
     }
   },
   apollo: {
@@ -1066,6 +1109,58 @@ export default {
       update: (data) => data.groups.list,
       watchLoading (isLoading) {
         this.$store.commit(`loading${isLoading ? 'Start' : 'Stop'}`, 'admin-groups-refresh')
+      }
+    },
+    pages: {
+      query: gql`
+        query($creatorId: Int, $authorId: Int) {
+          pages {
+            list(creatorId: $creatorId, authorId: $authorId) {
+              id
+              title
+              createdAt
+              updatedAt
+            }
+          }
+        }
+      `,
+      variables () {
+        return {
+          creatorId: _.toSafeInteger(this.$route.params.id),
+          authorId: _.toSafeInteger(this.$route.params.id)
+        }
+      },
+      fetchPolicy: 'network-only',
+      update: (data) => data.pages.list,
+      watchLoading (isLoading) {
+        this.loading = isLoading
+        this.$store.commit(`loading${isLoading ? 'Start' : 'Stop'}`, 'profile-pages-refresh')
+      }
+    },
+    visitors: {
+      query: gql`
+        query($historyId: Int!, $pageId: Int!, $visitorId: Int!) {
+          pages {
+            allVisitors(historyId: $historyId, pageId: $pageId, visitorId: $visitorId) {
+              pageId
+              pageTitle
+              totalTime
+            }
+          }
+        }
+      `,
+      variables () {
+        return {
+          historyId: -1,
+          pageId: 0,
+          visitorId: _.toSafeInteger(this.$route.params.id)
+        }
+      },
+      fetchpolicy: 'network-only',
+      update: (data) => data.pages.allVisitors,
+      watchloading (isloading) {
+        this.loading = isloading
+        this.$store.commit(`loading${isloading ? 'Start' : 'Stop'}`, 'profile-pages-refresh')
       }
     }
   }

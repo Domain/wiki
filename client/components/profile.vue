@@ -22,7 +22,7 @@
         //-     v-list-item-title {{$t('profile:comments.title')}}
         //-     v-list-item-subtitle.caption.grey--text.text--lighten-1 Coming soon
         v-list-item(to='/visitors', color='primary')
-          v-list-item-action: v-icon mdi-file-document-outline
+          v-list-item-action: v-icon mdi-text-box-search-outline
           v-list-item-content
             v-list-item-title 浏览记录
 

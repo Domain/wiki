@@ -98,7 +98,7 @@ export default {
   },
   methods: {
     goToPage (pageId, userId) {
-      if (this.pageId != 0)
+      if (this.pageId == 0)
         window.location.assign(`/i/` + pageId)
       else
         window.location.assign(`/a/users/` + userId)

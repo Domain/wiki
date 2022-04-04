@@ -3,7 +3,10 @@
 # ====================
 FROM node:16-alpine AS assets
 
-RUN apk add yarn g++ make --no-cache
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories && \
+    apk add yarn g++ make cmake --no-cache && \
+    npm config set registry https://registry.npmmirror.com && \
+    yarn config set registry https://registry.npmmirror.com
 
 WORKDIR /wiki
 
@@ -26,7 +29,8 @@ RUN yarn --production --frozen-lockfile --non-interactive
 FROM node:16-alpine
 LABEL maintainer="requarks.io"
 
-RUN apk add bash curl git openssh gnupg sqlite --no-cache && \
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories && \
+    apk add bash curl git openssh gnupg sqlite --no-cache && \
     mkdir -p /wiki && \
     mkdir -p /logs && \
     mkdir -p /wiki/data/content && \

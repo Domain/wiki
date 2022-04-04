@@ -991,7 +991,10 @@ module.exports = class Page extends Model {
     if (page !== undefined) {
       const visitor = await WIKI.models.pages.relatedQuery('visitors')
         .for(page)
-        .where('visitorId', opts.userId)
+        .where({
+          visitorId: opts.userId,
+          historyId: 0
+        })
         .first()
       let diff = 1
       if (visitor === undefined) {

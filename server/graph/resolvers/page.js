@@ -381,7 +381,10 @@ module.exports = {
             }
           ])
           .joinRelated('[visitor, page]')
-          .where('historyId', args.historyId)
+          .where({
+            historyId: args.historyId,
+            pageId: args.pageId
+          })
       }
 
       if (args.pageId != 0) {
